@@ -1,0 +1,24 @@
+# Oracle Table Analyzer - Multi-Database Support
+# Requirements for all supported platforms
+
+# Core Flask dependencies
+Flask==3.0.0
+Flask-CORS==4.0.0
+
+# Excel file handling
+openpyxl==3.1.2
+
+# Oracle Database support
+oracledb==2.0.0
+
+# Databricks support
+databricks-sql-connector==3.0.2
+
+# Snowflake support
+snowflake-connector-python==3.6.0
+
+# Optional: Environment variable support
+python-dotenv==1.0.0
+
+# Production WSGI server for cloud deployment
+gunicorn==21.2.0

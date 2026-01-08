@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source-Target Compare - DB Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dual-login.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>🔀 DB Analyzer - Source-Target Comparison</h1>
+                    <p class="subtitle">Compare tables between two different databases</p>
+                </div>
+                <div class="header-right">
+                    <button class="btn-secondary" onclick="resetAllFields()">🔄 Reset Fields</button>
+                    <button class="btn-home" onclick="goHome()">🏠 Home</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dual Login Section -->
+        <div class="dual-login-container">
+            <h2>Connect to Databases</h2>
+            <p style="text-align: center; margin-bottom: 20px;">Connect to source and target databases</p>
+            
+            <div class="db-connections-grid">
+                <div class="db-connection-card">
+                    <h3>Source Database</h3>
+                    <div class="form-group">
+                        <label>Database Type</label>
+                        <select id="sourceDbType" onchange="switchSourceDbType()">
+                            <option value="oracle">Oracle</option>
+                            <option value="databricks">Databricks</option>
+                            <option value="snowflake">Snowflake</option>
+                        </select>
+                    </div>
+                    <div id="sourceOracleFields">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="sourceUsername">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="sourcePassword">
+                        </div>
+                        <div class="form-group">
+                            <label>DSN</label>
+                            <input type="text" id="sourceDsn" placeholder="host:port/service">
+                        </div>
+                    </div>
+                    <div id="sourceDatabricksFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Server Hostname</label>
+                            <input type="text" id="sourceServerHostname">
+                        </div>
+                        <div class="form-group">
+                            <label>HTTP Path</label>
+                            <input type="text" id="sourceHttpPath">
+                        </div>
+                        <div class="form-group" style="background: #f0f9ff; padding: 12px; border-radius: 8px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="sourceUseAzureAD" onchange="toggleSourceDatabricksAuth()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 600;">🔐 Use Azure AD Authentication</span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="sourceTokenField">
+                            <label>Access Token</label>
+                            <input type="password" id="sourceAccessToken">
+                        </div>
+                    </div>
+                    <div id="sourceSnowflakeFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="sourceSnowflakeUsername">
+                        </div>
+                        <div class="form-group" style="background: #f0f9ff; padding: 12px; border-radius: 8px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="sourceUseSSO" onchange="toggleSourceSnowflakeAuth()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 600;">🔐 Use SSO Authentication</span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="sourcePasswordField">
+                            <label>Password</label>
+                            <input type="password" id="sourceSnowflakePassword">
+                        </div>
+                        <div class="form-group">
+                            <label>Account</label>
+                            <input type="text" id="sourceAccount">
+                        </div>
+                        <div class="form-group" id="sourceWarehouseField" style="display:none;">
+                            <label>Warehouse (Optional)</label>
+                            <input type="text" id="sourceWarehouse">
+                        </div>
+                        <div class="form-group" id="sourceDatabaseField" style="display:none;">
+                            <label>Database (Optional)</label>
+                            <input type="text" id="sourceDatabase">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="connectSourceDb()" id="sourceConnectBtn">Connect to Source</button>
+                    <div id="sourceStatus" class="connection-status"></div>
+                </div>
+
+                <div class="db-connection-card">
+                    <h3>Target Database</h3>
+                    <div class="form-group">
+                        <label>Database Type</label>
+                        <select id="targetDbType" onchange="switchTargetDbType()">
+                            <option value="oracle">Oracle</option>
+                            <option value="databricks">Databricks</option>
+                            <option value="snowflake">Snowflake</option>
+                        </select>
+                    </div>
+                    <div id="targetOracleFields">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="targetUsername">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="targetPassword">
+                        </div>
+                        <div class="form-group">
+                            <label>DSN</label>
+                            <input type="text" id="targetDsn" placeholder="host:port/service">
+                        </div>
+                    </div>
+                    <div id="targetDatabricksFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Server Hostname</label>
+                            <input type="text" id="targetServerHostname">
+                        </div>
+                        <div class="form-group">
+                            <label>HTTP Path</label>
+                            <input type="text" id="targetHttpPath">
+                        </div>
+                        <div class="form-group" style="background: #f0f9ff; padding: 12px; border-radius: 8px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="targetUseAzureAD" onchange="toggleTargetDatabricksAuth()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 600;">🔐 Use Azure AD Authentication</span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="targetTokenField">
+                            <label>Access Token</label>
+                            <input type="password" id="targetAccessToken">
+                        </div>
+                    </div>
+                    <div id="targetSnowflakeFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="targetSnowflakeUsername">
+                        </div>
+                        <div class="form-group" style="background: #f0f9ff; padding: 12px; border-radius: 8px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="targetUseSSO" onchange="toggleTargetSnowflakeAuth()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 600;">🔐 Use SSO Authentication</span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="targetPasswordField">
+                            <label>Password</label>
+                            <input type="password" id="targetSnowflakePassword">
+                        </div>
+                        <div class="form-group">
+                            <label>Account</label>
+                            <input type="text" id="targetAccount">
+                        </div>
+                        <div class="form-group" id="targetWarehouseField" style="display:none;">
+                            <label>Warehouse (Optional)</label>
+                            <input type="text" id="targetWarehouse">
+                        </div>
+                        <div class="form-group" id="targetDatabaseField" style="display:none;">
+                            <label>Database (Optional)</label>
+                            <input type="text" id="targetDatabase">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="connectTargetDb()" id="targetConnectBtn">Connect to Target</button>
+                    <div id="targetStatus" class="connection-status"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Section -->
+        <div id="comparisonSection" style="display:none; margin-top: 20px;">
+            <div class="card">
+                <h2>Compare Tables</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h3>Source Table</h3>
+                        <div class="form-group">
+                            <label>Table Name</label>
+                            <input type="text" id="sourceTableName" placeholder="TABLE_NAME">
+                        </div>
+                        <div class="form-group">
+                            <label>Schema (Optional)</label>
+                            <input type="text" id="sourceSchema" placeholder="SCHEMA_NAME">
+                        </div>
+                    </div>
+                    <div>
+                        <h3>Target Table</h3>
+                        <div class="form-group">
+                            <label>Table Name</label>
+                            <input type="text" id="targetTableName" placeholder="TABLE_NAME">
+                        </div>
+                        <div class="form-group">
+                            <label>Schema (Optional)</label>
+                            <input type="text" id="targetSchema" placeholder="SCHEMA_NAME">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comparison Options -->
+                <div style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                    <h3 style="margin-bottom: 15px; font-size: 16px;">Comparison Options</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="compareStructure" checked style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>Compare Structure (Columns, Data Types)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="compareRowCount" checked style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>Compare Row Count</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="compareIndexes" style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>Compare Indexes</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="compareConstraints" style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                            <span>Compare Constraints (Primary Key, Foreign Keys)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="compareSourceTarget()" style="margin-top: 20px;">Compare Tables</button>
+                <div id="stLoading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Comparing tables...</p>
+                </div>
+                
+                <div id="stResults" class="results" style="display: none;">
+                    <div id="stResultsContent"></div>
+                </div>
+                
+                <div id="stError" class="error" style="display: none;"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Developed by <strong>Amdocs Data Team</strong> | Version 2.0</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/source-target-dual.js') }}"></script>
+    <script>
+        function goHome() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

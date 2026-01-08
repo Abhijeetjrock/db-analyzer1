@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Script Generator - DB Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sql-script-generator.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 SQL Script Generator</h1>
+            <p class="subtitle">Generate INSERT and MERGE scripts for database migration</p>
+            <button class="btn-back" onclick="goHome()">← Back to Home</button>
+        </div>
+
+        <div class="content-card">
+            <form id="scriptForm">
+                <div class="form-section">
+                    <h2>📥 Source Table Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sourceSchema">Source Schema Name *</label>
+                            <input type="text" id="sourceSchema" placeholder="e.g., HR_SOURCE" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sourceTable">Source Table Name *</label>
+                            <input type="text" id="sourceTable" placeholder="e.g., EMPLOYEES" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="sourceColumns">Source Columns (comma separated) *</label>
+                            <input type="text" id="sourceColumns" placeholder="e.g., EMP_ID, NAME, EMAIL, DEPT_ID" required>
+                            <small>Enter column names separated by commas</small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="sourcePK">Source Primary Key Columns (comma separated) *</label>
+                            <input type="text" id="sourcePK" placeholder="e.g., EMP_ID" required>
+                            <small>Enter primary key column(s) separated by commas if multiple</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>📤 Target Table Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="targetSchema">Target Schema Name *</label>
+                            <input type="text" id="targetSchema" placeholder="e.g., HR_TARGET" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="targetTable">Target Table Name *</label>
+                            <input type="text" id="targetTable" placeholder="e.g., EMPLOYEES" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="targetColumns">Target Columns (comma separated) *</label>
+                            <input type="text" id="targetColumns" placeholder="e.g., EMP_ID, NAME, EMAIL, DEPT_ID" required>
+                            <small>Enter column names separated by commas</small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="targetPK">Target Primary Key Columns (comma separated) *</label>
+                            <input type="text" id="targetPK" placeholder="e.g., EMP_ID" required>
+                            <small>Enter primary key column(s) separated by commas if multiple</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>🗄️ Database Type</h2>
+                    <div class="database-selector">
+                        <label class="radio-card">
+                            <input type="radio" name="dbType" value="oracle" checked>
+                            <div class="radio-card-content">
+                                <div class="radio-icon">🔴</div>
+                                <div class="radio-label">Oracle</div>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="dbType" value="databricks">
+                            <div class="radio-card-content">
+                                <div class="radio-icon">🔶</div>
+                                <div class="radio-label">Databricks</div>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="dbType" value="snowflake">
+                            <div class="radio-card-content">
+                                <div class="radio-icon">❄️</div>
+                                <div class="radio-label">Snowflake</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button type="button" class="btn-primary" onclick="generateScript('insert')">
+                        <span class="btn-icon">📝</span>
+                        Generate INSERT Script
+                    </button>
+                    <button type="button" class="btn-primary" onclick="generateScript('merge')">
+                        <span class="btn-icon">🔀</span>
+                        Generate MERGE Script
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultSection" class="result-section" style="display: none;">
+            <div class="result-header">
+                <h2 id="resultTitle">Generated Script</h2>
+                <div class="result-actions">
+                    <button class="btn-secondary" onclick="copyScript()">
+                        <span class="btn-icon">📋</span>
+                        Copy to Clipboard
+                    </button>
+                    <button class="btn-secondary" onclick="downloadScript()">
+                        <span class="btn-icon">💾</span>
+                        Download Script
+                    </button>
+                </div>
+            </div>
+            <div class="script-container">
+                <pre id="generatedScript"></pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        let currentScript = '';
+        let currentDbType = 'oracle';
+        let currentScriptType = '';
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => {
+                notification.className = 'notification';
+            }, 3000);
+        }
+
+        function parseColumns(columnString) {
+            return columnString.split(',').map(col => col.trim().toUpperCase()).filter(col => col);
+        }
+
+        function generateScript(scriptType) {
+            // Get form values
+            const sourceSchema = document.getElementById('sourceSchema').value.trim().toUpperCase();
+            const sourceTable = document.getElementById('sourceTable').value.trim().toUpperCase();
+            const sourceColumns = document.getElementById('sourceColumns').value.trim();
+            const sourcePK = document.getElementById('sourcePK').value.trim();
+            
+            const targetSchema = document.getElementById('targetSchema').value.trim().toUpperCase();
+            const targetTable = document.getElementById('targetTable').value.trim().toUpperCase();
+            const targetColumns = document.getElementById('targetColumns').value.trim();
+            const targetPK = document.getElementById('targetPK').value.trim();
+            
+            const dbType = document.querySelector('input[name="dbType"]:checked').value;
+
+            // Validate inputs
+            if (!sourceSchema || !sourceTable || !sourceColumns || !sourcePK ||
+                !targetSchema || !targetTable || !targetColumns || !targetPK) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Parse columns and PKs
+            const sourceCols = parseColumns(sourceColumns);
+            const targetCols = parseColumns(targetColumns);
+            const sourcePKCols = parseColumns(sourcePK);
+            const targetPKCols = parseColumns(targetPK);
+
+            // Generate script based on type
+            let script = '';
+            currentDbType = dbType;
+            currentScriptType = scriptType;
+
+            if (scriptType === 'insert') {
+                script = generateInsertScript(
+                    sourceSchema, sourceTable, sourceCols, sourcePKCols,
+                    targetSchema, targetTable, targetCols, targetPKCols,
+                    dbType
+                );
+            } else {
+                script = generateMergeScript(
+                    sourceSchema, sourceTable, sourceCols, sourcePKCols,
+                    targetSchema, targetTable, targetCols, targetPKCols,
+                    dbType
+                );
+            }
+
+            // Display script
+            currentScript = script;
+            document.getElementById('generatedScript').textContent = script;
+            document.getElementById('resultTitle').textContent = 
+                `Generated ${scriptType.toUpperCase()} Script (${dbType.toUpperCase()})`;
+            document.getElementById('resultSection').style.display = 'block';
+            
+            // Scroll to result
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+            
+            showNotification(`${scriptType.toUpperCase()} script generated successfully!`, 'success');
+        }
+
+        function generateInsertScript(sourceSchema, sourceTable, sourceCols, sourcePKCols,
+                                     targetSchema, targetTable, targetCols, targetPKCols, dbType) {
+            const sourceFullTable = `${sourceSchema}.${sourceTable}`;
+            const targetFullTable = `${targetSchema}.${targetTable}`;
+            
+            // Build column lists
+            const targetColList = targetCols.join(', ');
+            const sourceColList = sourceCols.map(col => `s.${col}`).join(', ');
+            
+            // Build WHERE clause for PK matching - map source PK to target PK
+            const pkConditions = sourcePKCols.map((sourcePK, index) => {
+                const targetPK = targetPKCols[index] || targetPKCols[0];
+                return `s.${sourcePK} = t.${targetPK}`;
+            }).join(' AND ');
+            
+            let script = '';
+            
+            if (dbType === 'oracle') {
+                script = `-- Oracle INSERT Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+INSERT INTO ${targetFullTable} (${targetColList})
+SELECT ${sourceColList}
+FROM ${sourceFullTable} s
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM ${targetFullTable} t
+    WHERE ${pkConditions}
+);
+
+COMMIT;
+`;
+            } else if (dbType === 'databricks') {
+                script = `-- Databricks INSERT Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+INSERT INTO ${targetFullTable} (${targetColList})
+SELECT ${sourceColList}
+FROM ${sourceFullTable} s
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM ${targetFullTable} t
+    WHERE ${pkConditions}
+);
+`;
+            } else if (dbType === 'snowflake') {
+                script = `-- Snowflake INSERT Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+INSERT INTO ${targetFullTable} (${targetColList})
+SELECT ${sourceColList}
+FROM ${sourceFullTable} s
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM ${targetFullTable} t
+    WHERE ${pkConditions}
+);
+
+COMMIT;
+`;
+            }
+            
+            return script;
+        }
+
+        function generateMergeScript(sourceSchema, sourceTable, sourceCols, sourcePKCols,
+                                    targetSchema, targetTable, targetCols, targetPKCols, dbType) {
+            const sourceFullTable = `${sourceSchema}.${sourceTable}`;
+            const targetFullTable = `${targetSchema}.${targetTable}`;
+            
+            // Build ON clause for MERGE
+            const mergeOnConditions = targetPKCols.map(pk => `t.${pk} = s.${pk}`).join(' AND ');
+            
+            // Build UPDATE SET clause (exclude PK columns)
+            const nonPKCols = targetCols.filter(col => !targetPKCols.includes(col));
+            const updateSetClause = nonPKCols.map(col => `t.${col} = s.${col}`).join(',\n           ');
+            
+            // Build INSERT clause
+            const insertColList = targetCols.join(', ');
+            const insertValList = sourceCols.map(col => `s.${col}`).join(', ');
+            
+            let script = '';
+            
+            if (dbType === 'oracle') {
+                script = `-- Oracle MERGE Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+MERGE INTO ${targetFullTable} t
+USING ${sourceFullTable} s
+ON (${mergeOnConditions})
+WHEN MATCHED THEN
+    UPDATE SET
+           ${updateSetClause}
+WHEN NOT MATCHED THEN
+    INSERT (${insertColList})
+    VALUES (${insertValList});
+
+COMMIT;
+`;
+            } else if (dbType === 'databricks') {
+                script = `-- Databricks MERGE Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+MERGE INTO ${targetFullTable} t
+USING ${sourceFullTable} s
+ON ${mergeOnConditions}
+WHEN MATCHED THEN
+    UPDATE SET
+           ${updateSetClause}
+WHEN NOT MATCHED THEN
+    INSERT (${insertColList})
+    VALUES (${insertValList});
+`;
+            } else if (dbType === 'snowflake') {
+                script = `-- Snowflake MERGE Script
+-- Generated on: ${new Date().toLocaleString()}
+-- Source: ${sourceFullTable}
+-- Target: ${targetFullTable}
+
+MERGE INTO ${targetFullTable} t
+USING ${sourceFullTable} s
+ON ${mergeOnConditions}
+WHEN MATCHED THEN
+    UPDATE SET
+           ${updateSetClause}
+WHEN NOT MATCHED THEN
+    INSERT (${insertColList})
+    VALUES (${insertValList});
+`;
+            }
+            
+            return script;
+        }
+
+        function copyScript() {
+            if (!currentScript) {
+                showNotification('No script to copy', 'error');
+                return;
+            }
+
+            navigator.clipboard.writeText(currentScript).then(() => {
+                showNotification('Script copied to clipboard!', 'success');
+            }).catch(err => {
+                showNotification('Failed to copy script', 'error');
+            });
+        }
+
+        function downloadScript() {
+            if (!currentScript) {
+                showNotification('No script to download', 'error');
+                return;
+            }
+
+            const sourceTable = document.getElementById('sourceTable').value.trim().toUpperCase();
+            const targetTable = document.getElementById('targetTable').value.trim().toUpperCase();
+            const filename = `${currentScriptType}_${sourceTable}_to_${targetTable}_${currentDbType}.sql`;
+            
+            const blob = new Blob([currentScript], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('Script downloaded successfully!', 'success');
+        }
+    </script>
+</body>
+</html>

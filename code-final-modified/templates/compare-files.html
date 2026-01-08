@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Files - DB Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>🔄 DB Analyzer - Compare Files</h1>
+                    <p class="subtitle">Compare two Excel analysis files to identify differences</p>
+                </div>
+                <div class="header-right">
+                    <button class="btn-secondary" onclick="resetFields()">🔄 Reset Fields</button>
+                    <button class="btn-home" onclick="goHome()">🏠 Home</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Compare Files Content -->
+        <div class="tab-content active" id="compare-tab">
+            <div class="card">
+                <h2>Compare Excel Files</h2>
+                <p>Upload two table analysis Excel files to compare them and identify differences.</p>
+                
+                <div class="form-group">
+                    <label for="file1">File 1 (Baseline):</label>
+                    <input type="file" id="file1" accept=".xlsx" onchange="updateFileName('file1')">
+                    <div id="file1Name" class="file-name"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="file2">File 2 (Comparison):</label>
+                    <input type="file" id="file2" accept=".xlsx" onchange="updateFileName('file2')">
+                    <div id="file2Name" class="file-name"></div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="compareFiles()">
+                        <span class="btn-icon">🔍</span> Compare Files
+                    </button>
+                </div>
+                
+                <div id="compareLoading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Comparing files...</p>
+                </div>
+                
+                <div id="compareResults" class="results" style="display: none;">
+                    <h3>Comparison Results</h3>
+                    <div id="compareResultsContent"></div>
+                </div>
+                
+                <div id="compareError" class="error" style="display: none;"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Developed by <strong>Amdocs Data Team</strong> | Version 2.0</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/compare-files.js') }}"></script>
+    <script>
+        function goHome() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - DB Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+</head>
+<body>
+    <div class="home-container">
+        <div class="home-content">
+            <div class="logo-section">
+                <div class="logo-icon">🔍</div>
+                <h1 class="app-title">DB Analyzer</h1>
+                <p class="app-subtitle">Database Analysis & Comparison Tool</p>
+            </div>
+            
+            <div class="features-section">
+                <h2>Welcome to DB Analyzer</h2>
+                <p class="description">
+                    A powerful tool for analyzing and comparing database tables across multiple platforms
+                </p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Analyze Tables</h3>
+                        <p>Get detailed insights about table structure, indexes, and constraints</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔄</div>
+                        <h3>Compare Files</h3>
+                        <p>Compare Excel exports to identify differences between table analyses</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔀</div>
+                        <h3>Source-Target Compare</h3>
+                        <p>Compare source and target tables to validate migration or replication</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📝</div>
+                        <h3>Data Comparison</h3>
+                        <p>Execute and compare query results across databases</p>
+                    </div>
+                    
+                    <div class="feature-card" onclick="navigateTo('sql-script-generator')">
+                        <div class="feature-icon">🔧</div>
+                        <h3>SQL Script Generator</h3>
+                        <p>Generate INSERT and MERGE scripts for database migration without DB connection</p>
+                    </div>
+                    
+                    <div class="feature-card" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);" onclick="navigateTo('query-optimizer')">
+                        <div class="feature-icon">🚀</div>
+                        <h3>SQL Query Optimizer</h3>
+                        <p>AI-powered query optimization with hints, join improvements, index recommendations, and best practices</p>
+                        <div class="feature-badge">AI-Powered</div>
+                    </div>
+                    
+                    <div class="feature-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" onclick="navigateTo('nl-to-sql')">
+                        <div class="feature-icon">💬</div>
+                        <h3>Natural Language to SQL</h3>
+                        <p>Convert natural language questions into SQL queries using AI - just describe what data you need!</p>
+                        <div class="feature-badge">AI-Powered</div>
+                    </div>
+                </div>
+                
+                <div class="supported-databases">
+                    <h3>Supported Databases</h3>
+                    <div class="db-badges">
+                        <span class="db-badge oracle">Oracle Database</span>
+                        <span class="db-badge databricks">Databricks</span>
+                        <span class="db-badge snowflake">Snowflake</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-section">
+                <div class="action-buttons-grid">
+                    <button class="btn-action" onclick="goToFeature('analyze')">
+                        <span class="btn-icon">📊</span>
+                        <span class="btn-text">Analyze Table</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                    
+                    <button class="btn-action" onclick="goToCompareFiles()">
+                        <span class="btn-icon">🔄</span>
+                        <span class="btn-text">Compare Files</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                    
+                    <button class="btn-action" onclick="goToSourceTarget()">
+                        <span class="btn-icon">🔀</span>
+                        <span class="btn-text">Source-Target Compare</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                    
+                    <button class="btn-action" onclick="goToDataComparison()">
+                        <span class="btn-icon">📝</span>
+                        <span class="btn-text">Data Comparison</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </div>
+                <p class="action-hint">Select a feature to begin database analysis</p>
+            </div>
+            
+            <div class="footer">
+                <p>Developed by <strong>Amdocs Data Team</strong> | Version 2.0</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function goToFeature(feature) {
+            sessionStorage.setItem('selectedFeature', feature);
+            window.location.href = '/login';
+        }
+        
+        function goToCompareFiles() {
+            window.location.href = '/compare-files';
+        }
+        
+        function goToSourceTarget() {
+            window.location.href = '/source-target';
+        }
+        
+        function goToDataComparison() {
+            window.location.href = '/data-comparison';
+        }
+        
+        function navigateTo(feature) {
+            switch(feature) {
+                case 'data-comparison':
+                    window.location.href = '/data-comparison';
+                    break;
+                case 'sql-script-generator':
+                    window.location.href = '/sql-script-generator';
+                    break;
+                case 'query-optimizer':
+                    window.location.href = '/query-optimizer';
+                    break;
+                case 'nl-to-sql':
+                    window.location.href = '/nl-to-sql';
+                    break;
+                default:
+                    console.error('Unknown feature:', feature);
+            }
+        }
+    </script>
+</body>
+</html>

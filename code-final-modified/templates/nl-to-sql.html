@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Language to SQL Generator - CrossDB Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .input-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .options-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .example-prompts {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .example-prompts h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .example-prompts ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .example-prompts li {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-prompts li:hover {
+            background: #bbdefb;
+            transform: translateX(5px);
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 auto;
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .sql-outputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .sql-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .sql-box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .sql-box-header h3 {
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sql-box-header .db-icon {
+            font-size: 1.5em;
+        }
+
+        .copy-btn, .export-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover, .export-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .sql-code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            color: #f57c00;
+            border-left: 4px solid #f57c00;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            color: #d32f2f;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .export-all-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 20px auto;
+        }
+
+        .export-all-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .info-section {
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: #00796b;
+            margin-bottom: 10px;
+        }
+
+        .info-section ul {
+            list-style-position: inside;
+            color: #004d40;
+        }
+
+        .info-section li {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .sql-outputs {
+                grid-template-columns: 1fr;
+            }
+
+            .options-row {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>🤖</span>
+                Natural Language to SQL Generator
+            </h1>
+            <p>Convert your plain text requirements into optimized SQL queries for Oracle, Databricks & Snowflake</p>
+            
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">🏠 Home</a>
+                <a href="/query-optimizer" class="nav-btn">⚡ Query Optimizer</a>
+                <a href="/analyze" class="nav-btn">📊 Analyze Tables</a>
+                <a href="/source-target" class="nav-btn">🔄 Compare Schema</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Info Section -->
+            <div class="info-section">
+                <h3>✨ How to Use:</h3>
+                <ul>
+                    <li><strong>0-Shot:</strong> AI generates SQL without examples (best for simple queries)</li>
+                    <li><strong>1-Shot:</strong> Provide 1 example to guide AI (better accuracy for complex patterns)</li>
+                    <li><strong>Few-Shot:</strong> Provide multiple examples (highest accuracy for domain-specific queries)</li>
+                    <li>Select target databases to generate SQL in specific syntax</li>
+                    <li>AI optimization enhances generated queries for better performance</li>
+                </ul>
+            </div>
+
+            <!-- Input Section -->
+            <div class="input-section">
+                <h2>📝 Input Your Requirements</h2>
+                
+                <div class="form-group">
+                    <label for="nlPrompt">Natural Language Query Description:</label>
+                    <textarea 
+                        id="nlPrompt" 
+                        placeholder="Example: Get all employees who joined in the last 30 days and have a salary greater than 50000, ordered by hire date"
+                    ></textarea>
+                </div>
+
+                <div class="options-row">
+                    <div class="form-group">
+                        <label for="learningMode">Learning Mode:</label>
+                        <select id="learningMode">
+                            <option value="zero-shot">0-Shot (No Examples)</option>
+                            <option value="one-shot">1-Shot (1 Example)</option>
+                            <option value="few-shot">Few-Shot (Multiple Examples)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useAI" checked>
+                            <label for="useAI">🤖 Use AI-Powered Optimization</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example Input (for 1-shot and few-shot) -->
+                <div id="exampleSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="examplePrompt">Example Natural Language:</label>
+                        <textarea 
+                            id="examplePrompt" 
+                            placeholder="Example: Get all active users"
+                        ></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="exampleSQL">Example SQL:</label>
+                        <textarea 
+                            id="exampleSQL" 
+                            placeholder="SELECT * FROM users WHERE status = 'active'"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Database Selection -->
+                <div class="form-group">
+                    <label>Target Databases:</label>
+                    <div class="options-row">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="genOracle" checked>
+                            <label for="genOracle">🔶 Oracle SQL</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="genDatabricks" checked>
+                            <label for="genDatabricks">🔷 Databricks SQL</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="genSnowflake" checked>
+                            <label for="genSnowflake">❄️ Snowflake SQL</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example Prompts -->
+                <div class="example-prompts">
+                    <h4>💡 Example Prompts (Click to Use):</h4>
+                    <ul>
+                        <li onclick="fillExample('Get all orders placed in the last 7 days with total amount greater than 1000')">
+                            Get all orders placed in the last 7 days with total amount greater than 1000
+                        </li>
+                        <li onclick="fillExample('Find top 10 customers by total purchase amount in 2024')">
+                            Find top 10 customers by total purchase amount in 2024
+                        </li>
+                        <li onclick="fillExample('List employees with their department names and managers, sorted by salary descending')">
+                            List employees with their department names and managers, sorted by salary descending
+                        </li>
+                        <li onclick="fillExample('Count number of products in each category that are currently in stock')">
+                            Count number of products in each category that are currently in stock
+                        </li>
+                    </ul>
+                </div>
+
+                <button class="generate-btn" onclick="generateSQL()">
+                    <span>✨</span>
+                    Generate SQL Queries
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>🤖 AI is generating optimized SQL queries...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div style="text-align: center;">
+                    <button class="export-all-btn" onclick="exportAllSQL()">
+                        <span>📥</span>
+                        Export All SQL Queries
+                    </button>
+                </div>
+
+                <div class="sql-outputs" id="sqlOutputs">
+                    <!-- SQL boxes will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle example section based on learning mode
+        document.getElementById('learningMode').addEventListener('change', function() {
+            const exampleSection = document.getElementById('exampleSection');
+            if (this.value === 'one-shot' || this.value === 'few-shot') {
+                exampleSection.style.display = 'block';
+            } else {
+                exampleSection.style.display = 'none';
+            }
+        });
+
+        // Fill example prompt
+        function fillExample(text) {
+            document.getElementById('nlPrompt').value = text;
+        }
+
+        // Generate SQL
+        async function generateSQL() {
+            const nlPrompt = document.getElementById('nlPrompt').value.trim();
+            const learningMode = document.getElementById('learningMode').value;
+            const useAI = document.getElementById('useAI').checked;
+            const genOracle = document.getElementById('genOracle').checked;
+            const genDatabricks = document.getElementById('genDatabricks').checked;
+            const genSnowflake = document.getElementById('genSnowflake').checked;
+
+            // Validation
+            if (!nlPrompt) {
+                alert('Please enter a natural language query description');
+                return;
+            }
+
+            if (!genOracle && !genDatabricks && !genSnowflake) {
+                alert('Please select at least one target database');
+                return;
+            }
+
+            // Get examples if in 1-shot or few-shot mode
+            let examplePrompt = '';
+            let exampleSQL = '';
+            if (learningMode !== 'zero-shot') {
+                examplePrompt = document.getElementById('examplePrompt').value.trim();
+                exampleSQL = document.getElementById('exampleSQL').value.trim();
+                
+                if (!examplePrompt || !exampleSQL) {
+                    alert('Please provide both example natural language and example SQL for ' + learningMode + ' mode');
+                    return;
+                }
+            }
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('resultsSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/nl-to-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nl_prompt: nlPrompt,
+                        learning_mode: learningMode,
+                        use_ai: useAI,
+                        target_databases: {
+                            oracle: genOracle,
+                            databricks: genDatabricks,
+                            snowflake: genSnowflake
+                        },
+                        example_prompt: examplePrompt,
+                        example_sql: exampleSQL
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error generating SQL: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        // Display results
+        function displayResults(data) {
+            const sqlOutputs = document.getElementById('sqlOutputs');
+            sqlOutputs.innerHTML = '';
+
+            const databases = ['oracle', 'databricks', 'snowflake'];
+            const dbIcons = {
+                oracle: '🔶',
+                databricks: '🔷',
+                snowflake: '❄️'
+            };
+            const dbNames = {
+                oracle: 'Oracle SQL',
+                databricks: 'Databricks SQL',
+                snowflake: 'Snowflake SQL'
+            };
+
+            databases.forEach(db => {
+                if (data.generated_sql[db]) {
+                    const sqlBox = document.createElement('div');
+                    sqlBox.className = 'sql-box';
+                    sqlBox.innerHTML = `
+                        <div class="sql-box-header">
+                            <h3>
+                                <span class="db-icon">${dbIcons[db]}</span>
+                                ${dbNames[db]}
+                                ${data.ai_used ? '<span class="ai-badge">AI Optimized</span>' : ''}
+                            </h3>
+                            <div>
+                                <button class="copy-btn" onclick="copySQL('${db}')">📋 Copy</button>
+                                <button class="export-btn" onclick="exportSQL('${db}')">💾 Export</button>
+                            </div>
+                        </div>
+                        <div class="sql-code" id="sql-${db}">${escapeHtml(data.generated_sql[db])}</div>
+                    `;
+                    sqlOutputs.appendChild(sqlBox);
+                }
+            });
+
+            // Show AI info if used
+            if (data.ai_used) {
+                const aiInfo = document.createElement('div');
+                aiInfo.className = 'alert alert-success';
+                aiInfo.innerHTML = `
+                    <strong>🤖 AI Provider:</strong> ${data.ai_provider.toUpperCase()}<br>
+                    <strong>📊 Learning Mode:</strong> ${data.learning_mode.replace('-', ' ').toUpperCase()}<br>
+                    ${data.explanation ? '<strong>💡 AI Explanation:</strong> ' + data.explanation : ''}
+                `;
+                sqlOutputs.insertBefore(aiInfo, sqlOutputs.firstChild);
+            }
+
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            // Store data globally for export
+            window.generatedSQLData = data;
+        }
+
+        // Copy SQL to clipboard
+        function copySQL(db) {
+            const sqlElement = document.getElementById('sql-' + db);
+            const text = sqlElement.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('SQL copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy SQL: ' + err);
+            });
+        }
+
+        // Export single SQL
+        function exportSQL(db) {
+            const sqlElement = document.getElementById('sql-' + db);
+            const text = sqlElement.textContent;
+            const filename = `nl_to_sql_${db}_${new Date().getTime()}.txt`;
+            
+            downloadTextFile(text, filename);
+        }
+
+        // Export all SQL
+        async function exportAllSQL() {
+            if (!window.generatedSQLData) {
+                alert('No SQL queries to export');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/export-nl-to-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(window.generatedSQLData)
+                });
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nl_to_sql_all_${new Date().getTime()}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Error exporting SQL: ' + error.message);
+            }
+        }
+
+        // Helper: Download text file
+        function downloadTextFile(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Helper: Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

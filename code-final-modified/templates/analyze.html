@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyze Tables - DB Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>📊 DB Analyzer - Table Analysis</h1>
+                    <p class="subtitle">Analyze database table structure, indexes, and constraints</p>
+                </div>
+                <div class="header-right">
+                    <button class="btn-secondary" onclick="resetFields()">🔄 Reset Fields</button>
+                    <button class="btn-home" onclick="goHome()">🏠 Home</button>
+                    <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>Analyze Tables</h2>
+            <p>Enter one or more table names to analyze. You can specify schema names if needed.</p>
+            
+            <div class="form-group">
+                <label for="tableNames">Table Names (comma-separated):</label>
+                <textarea id="tableNames" rows="4" placeholder="e.g., CUSTOMERS, SCHEMA1.ORDERS, PRODUCTS"></textarea>
+                <small>Examples: TABLE1, TABLE2 or SCHEMA.TABLE1, SCHEMA.TABLE2</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="ownerSchema">Default Schema/Owner (Optional):</label>
+                <input type="text" id="ownerSchema" placeholder="e.g., AMDAPP9">
+                <small>Used when table name doesn't include schema</small>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="analyzeTables()">
+                    <span class="btn-icon">🔍</span> Analyze Tables
+                </button>
+                <button class="btn btn-success" onclick="exportToExcel()" id="exportBtn" disabled>
+                    <span class="btn-icon">📥</span> Export to Excel
+                </button>
+            </div>
+            
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing tables...</p>
+            </div>
+            
+            <div id="results" class="results" style="display: none;">
+                <h3>Analysis Results</h3>
+                <div id="resultsContent"></div>
+            </div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+
+        <footer>
+            <p>Developed by <strong>Amdocs Data Team</strong> | Version 2.0</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+    <script>
+        let analysisData = null;
+
+        function resetFields() {
+            if (confirm('Are you sure you want to reset all fields and clear results?')) {
+                // Clear input fields
+                document.getElementById('tableNames').value = '';
+                document.getElementById('ownerSchema').value = '';
+                
+                // Reset analysis data
+                analysisData = null;
+                
+                // Hide results and errors
+                document.getElementById('results').style.display = 'none';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('loading').style.display = 'none';
+                
+                // Clear results content
+                document.getElementById('resultsContent').innerHTML = '';
+                document.getElementById('error').textContent = '';
+                
+                // Disable export button
+                document.getElementById('exportBtn').disabled = true;
+                
+                // Show success message
+                const successMsg = document.createElement('div');
+                successMsg.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                    z-index: 10000;
+                `;
+                successMsg.innerHTML = '✓ All fields have been reset';
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => successMsg.remove(), 2000);
+            }
+        }
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/';
+            }
+        }
+
+        async function analyzeTables() {
+            const tableNames = document.getElementById('tableNames').value.trim();
+            const ownerSchema = document.getElementById('ownerSchema').value.trim();
+            
+            const loadingDiv = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            const errorDiv = document.getElementById('error');
+            const exportBtn = document.getElementById('exportBtn');
+            
+            resultsDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            exportBtn.disabled = true;
+            
+            if (!tableNames) {
+                errorDiv.textContent = 'Please enter at least one table name.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            loadingDiv.style.display = 'block';
+            
+            const requestBody = {
+                tables: tableNames.split(',').map(t => t.trim()).filter(t => t)
+            };
+            
+            if (ownerSchema) {
+                requestBody.owner = ownerSchema;
+            }
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                loadingDiv.style.display = 'none';
+                
+                if (data.success) {
+                    analysisData = data.data;
+                    displayResults(data.data);
+                    exportBtn.disabled = false;
+                } else {
+                    errorDiv.textContent = `Error: ${data.error}`;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function displayResults(tables) {
+            const resultsContent = document.getElementById('resultsContent');
+            let html = '';
+            
+            tables.forEach((table, index) => {
+                const tableName = table.schema ? `${table.schema}.${table.table_name}` : table.table_name;
+                const rowCount = table.count?.row_count || 'N/A';
+                const columnCount = table.structure?.length || 0;
+                
+                html += `
+                    <div class="table-result">
+                        <h4>${index + 1}. ${tableName}</h4>
+                        <p><strong>Row Count:</strong> ${rowCount}</p>
+                        <p><strong>Columns:</strong> ${columnCount}</p>
+                        <p><strong>Indexes:</strong> ${table.indexes?.length || 0}</p>
+                        <p><strong>Primary Key:</strong> ${table.primary_key?.constraint_name ? 'Yes' : 'No'}</p>
+                        <p><strong>Foreign Keys:</strong> ${table.foreign_keys?.length || 0}</p>
+                    </div>
+                `;
+            });
+            
+            resultsContent.innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        async function exportToExcel() {
+            if (!analysisData) return;
+            
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: analysisData })
+                });
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `table_analysis_${new Date().getTime()}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert(`Export failed: ${error.message}`);
+            }
+        }
+
+        // Check authentication on page load
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/check-auth');
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+            }
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>
