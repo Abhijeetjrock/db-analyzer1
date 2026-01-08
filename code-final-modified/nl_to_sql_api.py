@@ -168,6 +168,30 @@ Generate only for the requested databases. Use null for others."""
                     json=payload,
                     timeout=30
                 )
+                
+                # Handle different error codes with helpful messages
+                if response.status_code == 429:
+                    error_msg = "Rate limit exceeded. Free tier: 3 requests/min. Try again in a minute or upgrade your plan."
+                    logger.warning(error_msg)
+                    return {
+                        'success': False,
+                        'error': error_msg
+                    }
+                elif response.status_code == 401:
+                    error_msg = "Invalid API key. Please check your OpenAI API key in .env file."
+                    logger.error(error_msg)
+                    return {
+                        'success': False,
+                        'error': error_msg
+                    }
+                elif response.status_code == 403:
+                    error_msg = "Access forbidden. Your API key may not have permission for this model or the key is invalid."
+                    logger.error(error_msg)
+                    return {
+                        'success': False,
+                        'error': error_msg
+                    }
+                
                 response.raise_for_status()
                 result = response.json()
                 ai_response = result['choices'][0]['message']['content']
