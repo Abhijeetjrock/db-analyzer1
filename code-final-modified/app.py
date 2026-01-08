@@ -39,7 +39,7 @@ AI_API_KEY = os.getenv('AI_API_KEY', '')  # Leave empty to set below
 
 # 👇 QUICK SETUP: Paste your API key here for testing
 if not AI_API_KEY:
-    AI_API_KEY = 'AIzaSyAuhNWDCsHNhZDPL-hvTw4gVTRb6pcmQeo'  # ← PUT YOUR API KEY BETWEEN THE QUOTES
+    AI_API_KEY = 'AIzaSyA7c_pgmOk3XW-0sFlWeWeWb0Rb899CmIU'  # ← PUT YOUR API KEY BETWEEN THE QUOTES
     # Example: AI_API_KEY = 'sk-proj-abc123...'  (for OpenAI)
     # Example: AI_API_KEY = 'AIzaSy...'  (for Google Gemini)
 
