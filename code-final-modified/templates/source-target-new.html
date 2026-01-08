@@ -234,7 +234,12 @@
                     </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="compareSourceTarget()" style="margin-top: 20px;">Compare Tables</button>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="compareSourceTarget()">Compare Tables</button>
+                    <button class="btn btn-success" id="exportComparisonBtn" onclick="exportComparisonToExcel()" style="display: none;">
+                        <span style="margin-right: 5px;">📥</span> Export to Excel
+                    </button>
+                </div>
                 <div id="stLoading" class="loading" style="display: none;">
                     <div class="spinner"></div>
                     <p>Comparing tables...</p>

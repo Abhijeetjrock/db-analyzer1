@@ -5,6 +5,7 @@ let sourceSessionId = null;
 let targetSessionId = null;
 let sourceDbType = null;
 let targetDbType = null;
+let lastComparisonData = null; // Store comparison results for export
 
 // Switch database type for source
 function switchSourceDbType() {
@@ -362,6 +363,15 @@ function displayComparisonResults(data) {
     const resultsContent = document.getElementById('stResultsContent');
     const diffs = data.differences;
     
+    // Store data for export
+    lastComparisonData = data;
+    
+    // Show export button
+    const exportBtn = document.getElementById('exportComparisonBtn');
+    if (exportBtn) {
+        exportBtn.style.display = 'inline-block';
+    }
+    
     let html = `
         <div class="comparison-summary">
             <h3>Summary</h3>
@@ -591,4 +601,86 @@ function resetAllFields() {
             setTimeout(() => successMsg.remove(), 300);
         }, 2000);
     }
+}
+
+// Export comparison results to Excel
+async function exportComparisonToExcel() {
+    if (!lastComparisonData) {
+        alert('No comparison data available to export.');
+        return;
+    }
+    
+    const exportBtn = document.getElementById('exportComparisonBtn');
+    const originalText = exportBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = '<span style="margin-right: 5px;">⏳</span> Exporting...';
+        
+        const response = await fetch('/api/export-comparison', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(lastComparisonData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Export failed');
+        }
+        
+        // Get the blob from response
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const sourceName = lastComparisonData.source_table.replace(/\./g, '_');
+        const targetName = lastComparisonData.target_table.replace(/\./g, '_');
+        a.download = `comparison_${sourceName}_vs_${targetName}_${timestamp}.xlsx`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        showExportSuccessMessage();
+        
+    } catch (error) {
+        alert('Error exporting to Excel: ' + error.message);
+    } finally {
+        // Restore button state
+        exportBtn.disabled = false;
+        exportBtn.innerHTML = originalText;
+    }
+}
+
+// Show export success message
+function showExportSuccessMessage() {
+    const successMsg = document.createElement('div');
+    successMsg.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+    `;
+    successMsg.innerHTML = '✓ Comparison exported to Excel successfully!';
+    document.body.appendChild(successMsg);
+    
+    setTimeout(() => {
+        successMsg.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => successMsg.remove(), 300);
+    }, 3000);
 }

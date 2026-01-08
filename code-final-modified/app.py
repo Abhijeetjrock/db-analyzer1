@@ -2687,6 +2687,271 @@ def compare_source_target_dual():
         logger.error(f"Error in compare-source-target-dual: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/export-comparison', methods=['POST'])
+def export_comparison():
+    """Export table comparison results to Excel"""
+    try:
+        comp_data = request.get_json()
+        
+        # Create workbook
+        wb = Workbook()
+        wb.remove(wb.active)
+        
+        # Define styles
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        section_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+        section_font = Font(bold=True, color="FFFFFF", size=11)
+        added_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+        removed_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+        modified_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Summary Sheet
+        ws_summary = wb.create_sheet("Summary")
+        ws_summary.append(["Table Comparison Report"])
+        ws_summary.merge_cells('A1:D1')
+        ws_summary['A1'].font = Font(bold=True, size=14, color="4472C4")
+        ws_summary['A1'].alignment = Alignment(horizontal="center")
+        ws_summary.append(["Generated:", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        ws_summary.append([])
+        
+        ws_summary.append(["Source Table:", comp_data.get('source_table', 'N/A')])
+        ws_summary.append(["Target Table:", comp_data.get('target_table', 'N/A')])
+        ws_summary.append([])
+        
+        diffs = comp_data.get('differences', {})
+        ws_summary.append(["Comparison Results"])
+        for cell in ws_summary[ws_summary.max_row]:
+            cell.fill = section_fill
+            cell.font = section_font
+        ws_summary.merge_cells(f'A{ws_summary.max_row}:B{ws_summary.max_row}')
+        
+        ws_summary.append(["Total Differences:", diffs.get('total_count', 0)])
+        ws_summary.append(["Structure Differences:", len(diffs.get('structure', []))])
+        ws_summary.append(["Index Differences:", len(diffs.get('indexes', []))])
+        ws_summary.append(["Constraint Differences:", len(diffs.get('constraints', []))])
+        
+        row_count = diffs.get('row_count', {})
+        if row_count:
+            ws_summary.append(["Row Count - Source:", row_count.get('source', 'N/A')])
+            ws_summary.append(["Row Count - Target:", row_count.get('target', 'N/A')])
+            ws_summary.append(["Row Count Different:", 'Yes' if row_count.get('different') else 'No'])
+        
+        # Auto-adjust column widths
+        for column in ws_summary.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws_summary.column_dimensions[column_letter].width = min(max(max_length + 2, 15), 50)
+        
+        # Structure Differences Sheet
+        if diffs.get('structure'):
+            ws_struct = wb.create_sheet("Structure Differences")
+            ws_struct.append(["Structure Differences"])
+            ws_struct.merge_cells('A1:E1')
+            ws_struct['A1'].font = Font(bold=True, size=14, color="4472C4")
+            ws_struct['A1'].alignment = Alignment(horizontal="center")
+            ws_struct.append([])
+            
+            ws_struct.append(["Column Name", "Difference Type", "Source", "Target", "Status"])
+            for cell in ws_struct[ws_struct.max_row]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.border = border
+            
+            for diff in diffs['structure']:
+                row_data = [
+                    diff.get('column_name'),
+                    diff.get('diff_type'),
+                    diff.get('source_value', 'N/A'),
+                    diff.get('target_value', 'N/A'),
+                    diff.get('type', 'modified').upper()
+                ]
+                ws_struct.append(row_data)
+                
+                # Apply color coding
+                row_num = ws_struct.max_row
+                fill_color = modified_fill
+                if diff.get('type') == 'added':
+                    fill_color = added_fill
+                elif diff.get('type') == 'removed':
+                    fill_color = removed_fill
+                
+                for col in range(1, 6):
+                    ws_struct.cell(row_num, col).fill = fill_color
+                    ws_struct.cell(row_num, col).border = border
+            
+            # Auto-adjust column widths
+            for column in ws_struct.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                for cell in column:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws_struct.column_dimensions[column_letter].width = min(max(max_length + 2, 15), 50)
+        
+        # Row Count Sheet
+        if row_count and row_count.get('different'):
+            ws_rows = wb.create_sheet("Row Count Difference")
+            ws_rows.append(["Row Count Difference"])
+            ws_rows.merge_cells('A1:C1')
+            ws_rows['A1'].font = Font(bold=True, size=14, color="4472C4")
+            ws_rows['A1'].alignment = Alignment(horizontal="center")
+            ws_rows.append([])
+            
+            ws_rows.append(["Metric", "Value"])
+            for cell in ws_rows[ws_rows.max_row]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.border = border
+            
+            ws_rows.append(["Source Rows", row_count.get('source')])
+            ws_rows.append(["Target Rows", row_count.get('target')])
+            ws_rows.append(["Difference", row_count.get('difference')])
+            
+            for column in ws_rows.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                for cell in column:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws_rows.column_dimensions[column_letter].width = min(max(max_length + 2, 20), 50)
+        
+        # Index Differences Sheet
+        if diffs.get('indexes'):
+            ws_idx = wb.create_sheet("Index Differences")
+            ws_idx.append(["Index Differences"])
+            ws_idx.merge_cells('A1:D1')
+            ws_idx['A1'].font = Font(bold=True, size=14, color="4472C4")
+            ws_idx['A1'].alignment = Alignment(horizontal="center")
+            ws_idx.append([])
+            
+            ws_idx.append(["Index Name", "Type", "Status"])
+            for cell in ws_idx[ws_idx.max_row]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.border = border
+            
+            for diff in diffs['indexes']:
+                row_data = [
+                    diff.get('index_name'),
+                    diff.get('diff_type'),
+                    diff.get('status', '').replace('_', ' ').upper()
+                ]
+                ws_idx.append(row_data)
+                
+                # Apply color coding
+                row_num = ws_idx.max_row
+                fill_color = modified_fill
+                if 'missing_in_source' in diff.get('status', ''):
+                    fill_color = added_fill
+                elif 'missing_in_target' in diff.get('status', ''):
+                    fill_color = removed_fill
+                
+                for col in range(1, 4):
+                    ws_idx.cell(row_num, col).fill = fill_color
+                    ws_idx.cell(row_num, col).border = border
+            
+            for column in ws_idx.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                for cell in column:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws_idx.column_dimensions[column_letter].width = min(max(max_length + 2, 20), 50)
+        
+        # Constraint Differences Sheet
+        if diffs.get('constraints'):
+            ws_const = wb.create_sheet("Constraint Differences")
+            ws_const.append(["Constraint Differences"])
+            ws_const.merge_cells('A1:F1')
+            ws_const['A1'].font = Font(bold=True, size=14, color="4472C4")
+            ws_const['A1'].alignment = Alignment(horizontal="center")
+            ws_const.append([])
+            
+            ws_const.append(["Constraint Name", "Type", "Source Value", "Target Value", "Status"])
+            for cell in ws_const[ws_const.max_row]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.border = border
+            
+            for diff in diffs['constraints']:
+                row_data = [
+                    diff.get('constraint_name'),
+                    diff.get('constraint_type'),
+                    diff.get('source_value', 'N/A'),
+                    diff.get('target_value', 'N/A'),
+                    diff.get('status', '').replace('_', ' ').upper()
+                ]
+                ws_const.append(row_data)
+                
+                # Apply color coding
+                row_num = ws_const.max_row
+                fill_color = modified_fill
+                if 'missing_in_source' in diff.get('status', ''):
+                    fill_color = added_fill
+                elif 'missing_in_target' in diff.get('status', ''):
+                    fill_color = removed_fill
+                elif 'modified' in diff.get('status', ''):
+                    fill_color = modified_fill
+                
+                for col in range(1, 6):
+                    ws_const.cell(row_num, col).fill = fill_color
+                    ws_const.cell(row_num, col).border = border
+            
+            for column in ws_const.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                for cell in column:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws_const.column_dimensions[column_letter].width = min(max(max_length + 2, 20), 50)
+        
+        # Save to BytesIO
+        output_file = io.BytesIO()
+        wb.save(output_file)
+        output_file.seek(0)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"table_comparison_{timestamp}.xlsx"
+        
+        logger.info(f"Table comparison exported successfully: {filename}")
+        
+        return send_file(
+            output_file,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as error:
+        logger.error(f"Error exporting comparison: {str(error)}")
+        return jsonify({'success': False, 'error': str(error)}), 500
+
 @app.route('/api/compare-query-dual', methods=['POST'])
 def compare_query_dual():
     """Compare SQL query results from two different databases"""
