@@ -1,16 +1,15 @@
 services:
   - type: web
     name: db-analyzer
-    env: python
+    env: docker
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT app:app"
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: IS_CLOUD_DEPLOYMENT
         value: true
       - key: AI_MODEL_PROVIDER
         value: gemini
       - key: AI_API_KEY
         sync: false  # Set this manually in Render dashboard
+      - key: PORT
+        value: 10000
