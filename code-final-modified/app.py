@@ -144,7 +144,7 @@ def display_startup_banner():
     banner = """
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║                    CrossDB Analyzer v2.0                        ║
+║                    DataBridge Suite v2.0                        ║
 ║          Cross-Platform Database Analysis & Comparison          ║
 ║                                                                  ║
 ║              Developed by Amdocs Data Team                      ║
@@ -4268,8 +4268,8 @@ def calculate_estimated_improvement(original, optimized, suggestions, improvemen
 def api_info():
     """API information endpoint"""
     return jsonify({
-        'message': 'CrossDB Analyzer API',
-        'name': 'CrossDB Analyzer - Cross-Platform Database Analysis & Comparison Tool',
+        'message': 'DataBridge Suite API',
+        'name': 'DataBridge Suite - Multi-Database Validation & Comparison Platform',
         'developed_by': 'Amdocs Data Team',
         'version': '2.0 - Multi-Database Edition',
         'supported_databases': ['Oracle', 'Databricks', 'Snowflake'],
