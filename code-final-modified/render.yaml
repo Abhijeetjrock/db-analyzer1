@@ -3,7 +3,6 @@ services:
     name: db-analyzer
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile
     envVars:
       - key: IS_CLOUD_DEPLOYMENT
         value: true
